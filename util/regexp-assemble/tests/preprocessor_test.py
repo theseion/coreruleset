@@ -332,6 +332,16 @@ d
 
         assert output == '[ab][cd]'
 
+    def test_x(self, context):
+        contents = '''(?:(?:x))+
+prefix(?:(?:y))+
+'''
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '(?:prefix(?:(?:y)|(?:(?:x))+)'
+
 class TestCmdLinePreprocessor:
     def test_adds_unix_escapes(self, context):
         contents = 'foo'

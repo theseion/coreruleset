@@ -71,7 +71,10 @@ class Assemble(Processor):
 
         self.lines = []
 
-        return outs.split(b"\n")[0].decode("utf-8")
+        try:
+            return outs.split(b"\n")[0].decode("utf-8")
+        except Exception as e:
+            print(sys.exc_info())
 
 
     def _store(self, identifier: str):

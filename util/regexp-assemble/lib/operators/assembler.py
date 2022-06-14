@@ -1,3 +1,4 @@
+from types import TracebackType
 from typing import Iterable, TextIO, List, TypeVar, Generic, Generator, Iterator
 
 import re, logging, sys
@@ -243,12 +244,13 @@ class Assembler(object):
         line = peekerator.peek()
         while line is not None:
             self.stats.line_parsed()
+            line_number = self.stats.line
 
             if PREPROCESSOR_END_REGEX.match(line):
                 # consume the item
                 next(peekerator)
+                self.logger.debug('Found preprocessor end marker on line %s', line_number)
                 self.stats.processor_end()
-                self.logger.debug('Found preprocessor end marker')
                 break
             elif not processor.has_body():
                 self.stats.processor_end()
@@ -263,7 +265,7 @@ class Assembler(object):
                     self.logger.debug('Found simple comment %r', comment)
             elif PREPROCESSOR_START_REGEX.match(line):
                 lines += self._preprocess(peekerator)
-                self.logger.debug('Found preprocessor start marker')
+                self.logger.debug('Found preprocessor start marker "%s" on line %s', line.rstrip(), line_number)
             else:
                 lines.append(next(peekerator))
                 self.logger.debug('Found regular input %r', line)
