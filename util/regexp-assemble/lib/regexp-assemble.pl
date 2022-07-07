@@ -25,7 +25,7 @@ use Regexp::Assemble;
 # cook_hex: disable replacing hex escapes with decodec bytes
 # force_escape_tokens: we embed the resulting regex within double quotes,
 #                      so they all need to be escaped
-my $ra = Regexp::Assemble->new(cook_hex => 0, force_escape_tokens => q("), debug => 0);
+my $ra = Regexp::Assemble->new(cook_hex => 0, force_escape_tokens => q("), debug => 15);
 my @flags = ();
 my @prefixes = ();
 my @suffixes = ();
@@ -60,6 +60,31 @@ while (<>)
   # Example issue solved by `_lex`: `\(?` produces `\(\?` with `_fastlex`
   # Example escape introduced by `_lex`: `/` produces `\/`
   my $arr = $ra->lexstr($_);
+  my $level = 0;
+  my $max_level = 0;
+  for (my $n = 0; $n < $#$arr; $n++)
+  {
+    my @token = split(//, $arr->[$n]);
+    # if (ref @token eq 'ARRAY') {
+      for (my $t = 0; $t < $#token; $t++)
+      {
+        my $char = @token[$t];
+        $level++ if $char == '(';
+        $level-- if $char == ')';
+        $max_level = $level if $level > $max_level;
+      }
+    # }
+    # else
+    # {
+    #     $level++ if @token == '(';
+    #     $level-- if @token == ')';
+    #     $max_level = $level if $level > $max_level;
+    # }
+    if ($max_level > 1)
+    {
+      $arr = [join('', $arr)];
+    }
+  }
   for (my $n = 0; $n < $#$arr - 1; ++$n)
   {
     # find consecutive pairs where the first element ends with `+` and the last element is only `+`
