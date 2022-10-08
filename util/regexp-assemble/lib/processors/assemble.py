@@ -48,6 +48,9 @@ class Assemble(Processor):
 
     def _run_assembler(self) -> str:
         self.logger.debug('Running assembler with lines: %s', self.lines)
+        if len(self.lines) == 0:
+            return ''
+
         args = [str(self.context.regexp_assemble_pl_path)]
         outs = None
         errs = None
@@ -88,9 +91,36 @@ class Assemble(Processor):
         # the value we just stored
         self.output = ''
 
-    def _append(self, identifier:str):
+    def _append(self, identifier: str):
         if not identifier:
             self.output += self._run_assembler()
         else:
             self.logger.debug('Appending stored expression at %s', identifier)
             self.output += self.stash[identifier]
+
+    # def _remove_extra_groups(self, output: str) -> str:
+    #     if not (output.startswith('(?:(?:') and output.endswith('))')):
+    #         return output
+
+    #     def replace(matchobj) -> str:
+    #         return matchobj.group(0).replace(')', '_')
+                    
+
+    #     junk = re.sub(r'\\\)|\[[^\]]+\)', replace, output)
+
+    #     balance = 0
+    #     index = 5
+    #     while True:
+    #         next_open = junk.find('(?:', index)
+    #         next_close = junk.find(')', index)
+    #         if next_open > -1 and next_open < next_close:
+    #             balance += 1
+    #             index = next_open + 1
+    #         elif next_close > -1 and (next_close < next_open or next_open == -1):
+    #             balance -= 1
+    #             index = next_close + 1
+    #         elif next_close == next_open and next_open == -1:
+    #             break
+
+    #     if balance == -2:
+    #         return output[3:-1]

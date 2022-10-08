@@ -42,7 +42,7 @@ b'''
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == 'a prefix[ab]'
+        assert output[0] == 'a prefix(?:[ab])'
 
     def test_handles_suffix_comment(self, context):
         contents = '''##!$ a suffix
@@ -56,7 +56,7 @@ b'''
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == '[ab]a suffix'
+        assert output[0] == '(?:[ab])a suffix'
 
     def test_ignores_empty_lines(self, context):
         contents = '''##!+ i
@@ -71,7 +71,7 @@ another line'''
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == '(?i)(?:another|some) line'
+        assert output[0] == '(?i)(?:(?:another|some) line)'
 
     def test_returns_no_output_for_empty_input(self, context):
         contents = '''##!+ _
@@ -94,27 +94,27 @@ another line'''
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == r'\x5c\x5ca'
+        assert output[0] == r'(?:\x5c\x5ca)'
 
     def test_always_escapes_double_quotes(self, context):
-        contents = r'"\"\\"a'
+        contents = r'(?:"\"\\"a)'
         assemble = Assemble.create(context, [])
 
         assemble.process_line(contents)
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == r'\"\"\\\"a'
+        assert output[0] == r'(?:\"\"\\\"a)'
 
     def test_does_not_convert_hex_escapes(self, context):
-        contents = r'\x48'
+        contents = r'(?:\x48)'
         assemble = Assemble.create(context, [])
 
         assemble.process_line(contents)
         output = assemble.complete()
 
         assert len(output) == 1
-        assert output[0] == r'\x48'
+        assert output[0] == r'(?:\x48)'
 
     def test_assembling_1(self, context):
         contents = r'''##!^ \W*\(
@@ -125,7 +125,7 @@ d
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == r'''\W*\(two(?:a+b|c|d)'''
+        assert output == '\W*\(two(?:a+b|c|d)'
 
     def test_assembling_2(self, context):
         contents = r'''##!$ \W*\(
@@ -136,7 +136,7 @@ d
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == r'''(?:a+b|c|d)\W*\(two'''
+        assert output == '(?:a+b|c|d)\W*\(two'
 
     def test_assembling_3(self, context):
         contents = '''##!> assemble
@@ -151,7 +151,7 @@ cd
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == 'line1(?:ab|cd)'
+        assert output == '(?:(?:line1)(?:ab|cd))'
 
     def test_assembling_4(self, context):
         contents = '''##!> assemble
@@ -164,7 +164,7 @@ ab
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == 'ab'
+        assert output == '(?:ab)'
 
     def test_concatenating(self, context):
         contents = '''##!> assemble
@@ -208,7 +208,7 @@ ten
         output = assembler._run(Peekerator(contents.splitlines()))
 
         assert output == '(?:one|two)(?:three|four)fives(?:even|ix)(?:eight|nine)ten'
-
+        
     def test_concatenating_multiple_segments_(self, context):
         contents = '''##!> assemble
 one
@@ -233,10 +233,10 @@ ten
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:one|two)(?:three|four)five(?:s(?:even|ix)(?:eight|nine)|ten)'
+        assert output == '(?:(?:one|two)(?:three|four)(?:five)(?:s(?:even|ix)(?:eight|nine)|ten))'
 
     def test_concatenating_with_stored_input(self, context):
-        contents = '''##!> assemble
+        contents = r'''##!> assemble
 ##! slash patterns
 \x5c
 ##! URI encoded
@@ -256,7 +256,7 @@ ten
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:%(?:2f|5c)|\\)\\.(?:%0[01])?(?:%(?:2f|5c)|\\)'
+        assert output == r'(?:(?:%(?:(?:2f|5c)|\x5c))(?:\.(?:%0[01])?)(?:%(?:(?:2f|5c)|\x5c)))'
 
     def test_stored_input_is_global(self, context):
         contents = '''##!> assemble
@@ -330,9 +330,13 @@ d
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '[ab][cd]'
+        assert output == '(?:[ab])(?:[cd])'
 
-    def test_x(self, context):
+    def test_nested_groups(self, context):
+        """
+        This test checks that regexp-assemble.pl works around the known issue in
+        Regexp::Assemble, that it does not properly handle nested groups
+        """
         contents = '''(?:(?:x))+
 prefix(?:(?:y))+
 '''
@@ -340,7 +344,15 @@ prefix(?:(?:y))+
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:prefix(?:(?:y)|(?:(?:x))+)'
+        assert output == '(?:(?:x)+|prefix(?:y)+)'
+
+    def test_remove_extra_groups(self, context):
+        contents = '(?:(?:a(?:b|c)(?:(?:d))))'
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '(?:(?:(?:a(?:[bc])(?:d))))'
 
 class TestCmdLinePreprocessor:
     def test_adds_unix_escapes(self, context):
@@ -525,7 +537,7 @@ class TestTemplatePreprocessor:
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '**replaced**'
+        assert output == '(?:**replaced**)'
 
     def test_replaces_multiple_templates(self, context):
         contents = r'''##!> template id **replaced**
@@ -560,7 +572,7 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '**replaced**some**replaced**other**replaced**'
+        assert output == '(?:**replaced**some**replaced**other**replaced**)'
 
     def test_retains_escapes(self, context):
         contents = r'''##!> template id \n\s\b\v\t
@@ -570,7 +582,7 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'\n\s\b\v\t'
+        assert output == r'(?:\n\s\b\v\t)'
 
 
     def test_template_replaces_only_specified_template(self, context):
@@ -583,7 +595,7 @@ regex with {{slashes}} and {{dots}}
 
         # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
         # character classes. They should either be consistently escaped or not.
-        assert output == r'regex with [\/\] and {{dots}}'
+        assert output == r'(?:regex with [\/\] and {{dots}})'
 
     def test_template_replaces_all_normal_order(self, context):
         contents = r'''##!> template slashes [/\]
@@ -596,7 +608,7 @@ regex with {{slashes}} and {{dots}}
 
         # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
         # character classes. They should either be consistently escaped or not.
-        assert output == r'regex with [/\] and [.,;]'
+        assert output == r'(?:regex with [/\] and [.,;])'
 
     def test_template_replaces_all_inverse_order(self, context):
         contents = r'''##!> template slashes [/\]
@@ -631,7 +643,7 @@ regex with {{slashes}} and {{dots}}
 
         # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
         # character classes. They should either be consistently escaped or not.
-        assert output == r'[\/\][.,;]regex with [/\] and [.,;][\/\]+'
+        assert output == r'(?:[\/\])(?:[.,;])(?:regex with [/\] and [.,;])(?:[\/\]+)'
 
 
 class TestIncludePreprocessor:
