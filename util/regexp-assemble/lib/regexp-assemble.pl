@@ -67,106 +67,7 @@ print _escape_double_quotes(join('', @prefixes));
 print _run_assembly($regex);
 print _escape_double_quotes(join('', @suffixes)) . "\n";
 
-# sub _run_assembly {
-#     my $str = _assemble(@_);
-#     return $str if length($str) == 0 || $str =~ /^\(\?:/;
-#     '(?:' . $str . ')';
-# }
 
-# sub _assemble {
-#     # This sub-routine is an adaptation from Regexp::Optimizer.
-#     # In essence, it takes care of the problem that Regexp::Assemble
-#     # can't handle nested parentheses by useing Regexp::Assemble as
-#     # an optimizer of non-nested expressions only.
-#     my $re_nested;
-#     $re_nested = qr{
-#       \(                   # open paren
-#       ((?:                 # start capture  
-#         (?>[^()]+)       | # Non-parens w/o backtracking or ...
-#         (??{ $re_nested }) # Group with matching parens
-#       )*)                  # end capture
-#       \)                   # close paren
-#     }msx;
-#     my $str = shift;
-#     if ( $str !~ m/[(]/ms ) {
-#         return _optimize( split m{[|]}, $str );
-#     }
-#     $str =~ s{$re_nested}{
-#         no warnings 'uninitialized';
-#         my $sub = $1;
-#         if ($sub =~ m/\A\?(?:[\?\{\(PR]|[\+\-]?[0-9])/ms) {
-#             "($sub)";  # (?{CODE}) and like ruled out
-#         }else{
-#             my $mod = ($sub =~ s/\A\?//) ? '?' : '';
-#             if ($mod) {
-#                 $sub =~ s{\A(
-#                               [\w\^\-]*: | # modifier
-#                               [<]?[=!]   | # assertions
-#                               [<]\w+[>]  | # named capture
-#                               [']\w+[']  | # ditto
-#                               [|]          # branch reset
-#                           )
-#                      }{}msx;
-#                 $mod .= $1;
-#             }
-
-#             # print '--' . $sub . "\n";
-#             return $str if $mod == "?:" && $sub !~ $re_nested;
-#             if ($mod == "?:" && $sub !~ $re_nested)
-#             {
-#               _assemble($sub);
-#             }
-#             else
-#             {
-#               '(' . $mod . _assemble($sub) . ')'
-#             }
-#         }
-#     }msxge;
-#     $str;
-# }
-
-# sub _optimize {
-#   my $ra = Regexp::Assemble->new(cook_hex => 0, force_escape_tokens => q("));
-#   # Handle possessive quantifiers
-#   # https://rt.cpan.org/Public/Bug/Display.html?id=50228#txn-672717
-#   # The code below does nearly the same thing as add(), which is enough for our pruposes.
-
-#   # The following lines parse an expression like `(a++|b)++|b` into an array of `["(a++|b)+", "+", "|", "b"]`
-
-#   # We explicitly don't use `_fastlex` or `split` here (as is done in `_add`). `lexstr` uses `_lex`, which is
-#   # more expensive but produces more reliable output. On the downside, some characters will be escaped (or
-#   # will retain their escape) even though they don't need to be.
-#   #
-#   # Example issue solved by `_lex`: `\(?` produces `\(\?` with `_fastlex`
-#   # Example escape introduced by `_lex`: `/` produces `\/`
-#   for (@_)
-#   {
-#     my $arr = $ra->lexstr($_);
-#     for (my $n = 0; $n < $#$arr - 1; ++$n)
-#     {
-#       # find consecutive pairs where the first element ends with `+` and the last element is only `+`
-#       if ($arr->[$n] =~ /\+$/ and $arr->[$n + 1] eq '+') {
-#         # delete the second of the pair, concatenating it with the first element
-#         $arr->[$n] .= splice(@$arr, $n + 1, 1);
-#       }
-#     }
-#     # at this point the array looks like this: `["(a++|b)++", "|", "b"]`
-#     # we now have what we would want to pass to add(), so add it
-#     $ra->insert(@$arr);
-#   }
-
-#   # call as_string() to make stats_length() work
-#   my $pattern = $ra->as_string;
-#   # don't print the assembled string if nothing was added, the module will produce an all-matching pattern
-#   return $pattern if $ra->stats_length() > 0;
-#   return "";
-# }
-
-
-
-
- 
- 
 sub _assemble {
 	my $str = shift;
 	if ( $str !~ m/[(]/ms ) {
@@ -285,4 +186,3 @@ sub _escape_double_quotes {
    $str =~ s/(?<!\\)"/\\"/g;
    return $str;
  }
- 
