@@ -12,8 +12,9 @@
 ##! https://httpwg.org/specs/rfc7231.html#request.conneg
 ##! https://httpwg.org/specs/rfc7230.html
 
-##!^ ^
-##!$ $
+##! FIXME: fix test_concatenation_with_prefix_and_suffix, then use normal prefix / suffix comments
+^
+##!==>
 
 ##! Helpers
 ##!> template non-token-with-dquote-chars (),/:;<=>?![\x5c\]{}
@@ -99,3 +100,7 @@ charse[^t{{non-token-chars}}]{{token-chars}}*
 )*)*
   ##!=>
   ##!<
+##!=>
+
+$
+##!==>

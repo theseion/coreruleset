@@ -22,45 +22,43 @@
 ##! match possible white space between prefix expressions
 ##!^ \s*
 
-##! commands prefix
-(?:
-##!=>
-
+  ##! commands prefix
+  ##!> assemble
 ##! time ifconfig
   ##!> cmdline unix
 time
   ##!<
-##! { ifconfig }
+  ##! { ifconfig }
 \{
-##! ( ifconfig )
+  ##! ( ifconfig )
 \s*\(\s*
-##! VARNAME=xyz ifconfig
+  ##! VARNAME=xyz ifconfig
 \w+=(?:[^\s]*|\$.*|\$.*|<.*|>.*|\'.*\'|\".*\")\s+
-##! ! ifconfig
+  ##! ! ifconfig
 !\s*
-##! $ifconfig
+  ##! $ifconfig
 \$
+  ##!<
 ##!=>
 
-)*
-##!=>
+*
+##!==>
 
 ##! match possible white space between prefix expressions
 \s*
 ##!=>
 
-##! quoting prefix
-(?:
-##!=>
-
-##! 'ifconfig'
+  ##! quoting prefix
+  ##!> assemble
+  ##! 'ifconfig'
 '
-##! "ifconfig"
+  ##! "ifconfig"
 \"
+  ##!<
 ##!=>
 
-)*
-##!=>
+*
+##!==>
 
 ##! paths prefix (+ evasion prevention suffix [\x5c'\"]*)
 (?:[\?\*\[\]\(\)\-\|+\w'\"\./\x5c]+/)?[\x5c'\"]*

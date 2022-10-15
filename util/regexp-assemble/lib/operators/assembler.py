@@ -9,6 +9,7 @@ from lib.processors.cmdline import CmdLine
 from lib.processors.assemble import Assemble
 from lib.processors.template import Template
 from lib.processors.include import Include
+from lib.processors.final_assemble import FinalAssemble
 
 T = TypeVar('T')
 
@@ -62,8 +63,8 @@ class Peekerator(Generic[T]):
         else:
             return next(self.iterator)
 
-    def peek(self, default: any = None) -> T:
-        if not self.peeked:
+    def peek(self, default: any=None) -> T:
+        if self.peeked is None:
             try:
                 self.peeked = next(self.iterator)
             except StopIteration:
@@ -72,7 +73,7 @@ class Peekerator(Generic[T]):
 
 
 class Preprocessor(object):
-    def __init__(self, peekerator: Peekerator[str], processor_cls: Processor, context: Context, args):
+    def __init__(self, peekerator: Peekerator[str], processor_cls: Processor, context: Context, args: List[str] = []):
         self.processor = processor_cls.create(context, args)
         self.is_template = isinstance(self.processor, Template)
         self.is_include = isinstance(self.processor, Include)
@@ -120,7 +121,7 @@ class Assembler(object):
     def __init__(self, context: Context):
         self.context = context
         self.stats = Stats()
-        self.preprocessor_map = {
+        self.preprocessor_map: dict[str, Processor] = {
             "cmdline": CmdLine,
             "assemble": Assemble,
             "template": Template,
@@ -156,14 +157,10 @@ class Assembler(object):
         self.stats.processor_start()
         definition = match.group(1).split()
         try:
-            return self._instantiate_preprocessor(peekerator, definition[0], definition[1:])
+            return Preprocessor(peekerator, self.preprocessor_map[definition[0]], self.context, definition[1:])
         except KeyError:
             self.logger.critical('No processor found for %s', definition)
             sys.exit(1)
-
-    def _instantiate_preprocessor(self, peekerator: Peekerator[str], name: str, args: List[str]) -> Preprocessor:
-        processor_cls = self.preprocessor_map[name]
-        return Preprocessor(peekerator, processor_cls, self.context, args)
 
     def _is_simple_comment(self, line: str) -> bool:
         return SIMPLE_COMMENT_REGEX.match(line) is not None
@@ -228,7 +225,7 @@ class Assembler(object):
 
     def assemble(self, lines: List[str]) -> str:
         peekerator = Peekerator(lines)
-        processor = self._instantiate_preprocessor(peekerator, "assemble", [])
+        processor = Preprocessor(peekerator, FinalAssemble, self.context)
         result = processor.run(peekerator)
         return result[0] if result else ''
 
@@ -256,7 +253,7 @@ class Assembler(object):
                 self.stats.processor_end()
                 self.logger.debug('Preprocessor has no body. No lines to process')
                 break
-            elif line.strip() == '' or SIMPLE_COMMENT_REGEX.match(line):
+            elif line.strip() == '' or self._is_simple_comment(line):
                 # consume the item
                 next(peekerator)
                 if line.strip() != '':

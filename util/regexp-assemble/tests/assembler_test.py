@@ -2,7 +2,6 @@ import pytest
 
 from .fixtures import *
 from lib.operators.assembler import Assembler, Peekerator, NestingError
-from lib.context import Context
 
 class TestFileFormat:
     def test_preprocess_ignores_simple_comments(self, context):
@@ -99,6 +98,86 @@ another line'''
         assert len(output) == 0
 
 
+class TestSpecialComments:
+    def test_handles_ignore_case_flag(self, context):
+        for contents in ['##!+i', '##!+ i', '##!+   i' ]:
+            assembler = Assembler(context)
+            output = assembler._run(Peekerator(contents.splitlines()))
+
+            assert output == "(?i)"
+
+    def test_handles_no_other_flags(self, context):
+        contents = '##!+smx'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert len(output) == 0
+
+    def test_handles_prefix_comment(self, context):
+        contents = '''##!^ a prefix
+a
+b'''
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == 'a prefix[a-b]'
+
+    def test_handles_suffix_comment(self, context):
+        contents = '''##!$ a suffix
+a
+b'''
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '[a-b]a suffix'
+
+class TestSpecialCases:
+    def test_ignores_empty_lines(self, context):
+        contents = '''some line
+
+another line'''
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '(?:some|another) line'
+
+    def test_returns_no_output_for_empty_input(self, context):
+        contents = '''##!+ _
+
+'''
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert len(output) == 0
+
+    def test_handles_backslash_escape_correctly(self, context):
+        contents = r'\x5c\x5ca'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'\x5c\x5ca'
+
+    def test_handles_escaped_alternations_correctly(self, context):
+        contents = r'\|\|something|or other'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'\|\|something|or other'
+
+    def test_always_escapes_double_quotes(self, context):
+        contents = r'(?:"\"\\"a)'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'\"\"\x5c"a'
+
+    def test_does_not_convert_hex_escapes(self, context):
+        contents = r'(?:\x48)'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'\x48'
+
 class TestPreprocessors:
     def test_sequential_preprocessors(self, context):
         contents = '''##!> cmdline unix
@@ -122,7 +201,7 @@ five
         assert output == [
             'f[\\x5c\'\\"\\[]*(?:\\$[a-z0-9_@?!#{*-]*)?(?:\\x5c)?o[\\x5c\'\\"\\[]*(?:\\$[a-z0-9_@?!#{*-]*)?(?:\\x5c)?o',
             'b[\\"\\^]*a[\\"\\^]*r',
-            '(?:(?:t(?:hree|wo)|one))',
+            '(?:one|t(?:wo|hree))',
             'four',
             'five'
         ]
@@ -177,9 +256,9 @@ eight
 
 
         assert output == [
-            '(?:f[\\x5c\'\\"]*o[\\x5c\'\\"]*o|((?:[\\x5c\'\\"]*?[\\x5c\'\\"]*:[\\x5c\'\\"]*a[\\x5c\'\\"]*b|[\\x5c\'\\"]*c[\\x5c\'\\"]*d)[\\x5c\'\\"]*)|b[\\"\\^]*a[\\"\\^]*r)',
+            r'''(?:f["'\\]*o["'\\]*o|((?:["'\\]*?["'\\]*:["'\\]*a["'\\]*b|["'\\]*c["'\\]*d)["'\\]*)|b["\^]*a["\^]*r)''',
             'four',
             'five',
-            '(?:s(?:even|ix))',
+            '(?:s(?:ix|even))',
             'eight'
         ]

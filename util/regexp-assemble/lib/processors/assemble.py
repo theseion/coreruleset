@@ -34,24 +34,39 @@ class Assemble(Processor):
         match = self.output_regex.match(line)
         if match:
             self._append(match.group(1) if match.groups() else '')
-        else: 
+        else:
             self.lines.append(line)
 
     # override
     def complete(self) -> List[str]:
         self.logger.debug('Completing assembly')
         regex = self._run_assembler()
-        result = self.output + regex
+
+        result = self._wrap_completed_assembly(regex)
         self.logger.debug('Completed assembly: %s', result)
 
-        return result if result == '' else [result]
+        return [result] if len(result) > 0 else []
+
+    def _wrap_completed_assembly(self, regex: str) -> str:
+        if len(regex) == 0 and len(self.output) == 0:
+            return ''
+
+        elif len(self.output) > 0 and len(regex) > 0:
+            result = f'(?:{self.output}(?:{regex}))'
+        elif len(self.output) > 0:
+            result = '(?:' + self.output + ')'
+        else:
+            result = '(?:' + regex + ')'
+
+        return result
 
     def _run_assembler(self) -> str:
         self.logger.debug('Running assembler with lines: %s', self.lines)
         if len(self.lines) == 0:
             return ''
 
-        args = [str(self.context.regexp_assemble_pl_path)]
+        # args = [str(self.context.regexp_assemble_pl_path)]
+        args = ['rassemble']
         outs = None
         errs = None
         proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
@@ -76,7 +91,7 @@ class Assemble(Processor):
 
         try:
             return outs.split(b"\n")[0].decode("utf-8")
-        except Exception as e:
+        except Exception:
             print(sys.exc_info())
 
 
@@ -93,34 +108,7 @@ class Assemble(Processor):
 
     def _append(self, identifier: str):
         if not identifier:
-            self.output += self._run_assembler()
+            self.output += '(?:' + self._run_assembler() + ')'
         else:
             self.logger.debug('Appending stored expression at %s', identifier)
             self.output += self.stash[identifier]
-
-    # def _remove_extra_groups(self, output: str) -> str:
-    #     if not (output.startswith('(?:(?:') and output.endswith('))')):
-    #         return output
-
-    #     def replace(matchobj) -> str:
-    #         return matchobj.group(0).replace(')', '_')
-                    
-
-    #     junk = re.sub(r'\\\)|\[[^\]]+\)', replace, output)
-
-    #     balance = 0
-    #     index = 5
-    #     while True:
-    #         next_open = junk.find('(?:', index)
-    #         next_close = junk.find(')', index)
-    #         if next_open > -1 and next_open < next_close:
-    #             balance += 1
-    #             index = next_open + 1
-    #         elif next_close > -1 and (next_close < next_open or next_open == -1):
-    #             balance -= 1
-    #             index = next_close + 1
-    #         elif next_close == next_open and next_open == -1:
-    #             break
-
-    #     if balance == -2:
-    #         return output[3:-1]

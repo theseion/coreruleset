@@ -52,41 +52,40 @@
 \s*
 ##!=> 
 
-##! commands prefix
-(?:
-##!=>
-
-##! { ifconfig }
+  ##! commands prefix
+  ##!> assemble
+  ##! { ifconfig }
 \{
-##! ( ifconfig )
+  ##! ( ifconfig )
 \s*\(\s*
-##! VARNAME=xyz ifconfig
+  ##! VARNAME=xyz ifconfig
 \w+=(?:[^\s]*|\$.*|\$.*|<.*|>.*|\'.*\'|\".*\")\s+
-##! ! ifconfig
+  ##! ! ifconfig
 !\s*
-##! $ifconfig
+  ##! $ifconfig
 \$
+  ##!<
 ##!=>
 
-)*
-##!=>
+*
+##!==>
 
 ##! match possible white space between prefix expressions
 \s*
 ##!=>
 
-##! quoting prefix
-(?:
-##!=>
+  ##! quoting prefix
+  ##!> assemble
 
-##! 'ifconfig'
+  ##! 'ifconfig'
 '
-##! "ifconfig"
+  ##! "ifconfig"
 \"
+  ##!<
 ##!=>
 
-)*
-##!=>
+*
+##!==>
 
 ##! paths prefix (+ evasion prevention suffix [\x5c'\"]*)
 (?:[\?\*\[\]\(\)\-\|+\w'\"\./\x5c]+/)?[\x5c'\"]*

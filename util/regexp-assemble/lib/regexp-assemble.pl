@@ -28,44 +28,22 @@ $re_nested = qr{
 
 my $re_optimize = qr{(?<=[^\\])\|}ms;
 
-# cook_hex: disable replacing hex escapes with decodec bytes
-# force_escape_tokens: we embed the resulting regex within double quotes,
-#                      so they all need to be escaped
-# my $ra = Regexp::Assemble->new(cook_hex => 0, force_escape_tokens => q("), debug => 15);
-# my $ra = Regexp::Optimizer;
-my $regex = '';
-my @flags = ();
-my @prefixes = ();
-my @suffixes = ();
+my @lines = ();
 
 while (<>)
 {
   # strip new lines
   CORE::chomp($_);
 
-  # this is a flag comment (##!+), save it for later
-  # we currently only support the `i` flag
-  push (@flags, $1) if $_ =~ /^##!\+\s*([i]+)/;
-  # this is a prefix comment (##!^), save it for later
-  push (@prefixes, $1) if $_ =~ /^##!\^\s*(.*)/;
-  # this is a suffix comment (##!$), save it for later
-  push (@suffixes, $1) if $_ =~ /^##!\$\s*(.*)/;
   # skip comments
   next if $_ =~ /^##!/;
   # skip empty lines
   next if $_ =~ /^\s*$/;
 
-  $regex .= '|' if length($regex) > 0;
-  $regex .= $_;
+  push(@lines, $_);
 }
 
-if (@flags > 0) {
-  print "(?" . join('', @flags) . ")";
-}
-
-print _escape_double_quotes(join('', @prefixes));
-print _run_assembly($regex);
-print _escape_double_quotes(join('', @suffixes)) . "\n";
+print _run_assembly(@lines);
 
 
 sub _assemble {
@@ -100,8 +78,16 @@ sub _assemble {
 sub _optimize {
 	my $str = shift;
 
+	# cook_hex: disable replacing hex escapes with decodec bytes
+	# force_escape_tokens: we embed the resulting regex within double quotes,
+	#                      so they all need to be escaped
 	my $ra = Regexp::Assemble->new(cook_hex => 0, force_escape_tokens => q("));
-	my @parts = split(m{[|]}, $str);
+	my @parts;
+	if ($str =~ $re_optimize) {
+		@parts = split(m{[|]}, $str);
+	} else {
+		@parts = ($str);
+	}
 
 	# The code below does nearly the same thing as add(), which is enough for our pruposes.
 	for my $part (@parts)
@@ -117,7 +103,12 @@ sub _optimize {
 		_fix_possessive_plus($arr);
 		$ra->insert(@$arr);
 	}
-	return $ra->as_string;
+	# call as_string() to make stats_length() work
+	my $pattern = $ra->as_string();
+	# don't print the assembled string if nothing was added,
+	# the module will produce an all-matching pattern (`^\b\x00`)
+	return $pattern if $ra->stats_length() > 0;
+	return ""
 }
 
 sub _fix_possessive_plus {
@@ -142,22 +133,32 @@ sub _fix_possessive_plus {
 }
  
 sub _run_assembly {
-	my $str = shift;
+	my @lines = @_;
+	my $result = '';
 
-	my ($mod) = ($str =~ m/\A\(\?(.*?):/);
-	if ( $mod =~ /x/ ) {
-		$str =~ s{^\s+}{}mg;
-		$str =~ s{(?<=[^\\])\s*?#.*?$}{}mg;
-		$str =~ s{\s+[|]\s+}{|}mg;
-		$str =~ s{(?:\r\n?|\n)}{}msg;
-		$str =~ s{[ ]+}{ }msgx;
-		# warn $str;
+	for my $str (@lines) {
+		my ($mod) = ($str =~ m/\A\(\?(.*?):/);
+		if ( $mod =~ /x/ ) {
+			$str =~ s{^\s+}{}mg;
+			$str =~ s{(?<=[^\\])\s*?#.*?$}{}mg;
+			$str =~ s{\s+[|]\s+}{|}mg;
+			$str =~ s{(?:\r\n?|\n)}{}msg;
+			$str =~ s{[ ]+}{ }msgx;
+			# warn $str;
+		}
+		# escape all occurance of '\(' and '\)'
+		$str =~ s/\\([\(\)])/sprintf "\\x%02x" , ord $1/ge;
+		# escape '|' in character classes
+		$str =~ s/((?<!\\)\[[^[\]]*[^\\])\|/$1\\|/g;
+		my $assembled = _assemble($str);
+		if (length($result) > 0) {
+			$result .= '|' . $assembled;
+		} else {
+			$result = $assembled;
+		}
+
 	}
-	# escape all occurance of '\(' and '\)'
-	$str =~ s/\\([\(\)])/sprintf "\\x%02x" , ord $1/ge;
-	my $result = _assemble($str);
   return $result if length($result) == 0;
-  return "" if $result =~ /\x00$/;
   # Make sure the result is wrapped in a non-capturing group
   # to allow the returned expression to be used directly, e.g.,
   # by appending a qauntifier.
@@ -177,12 +178,3 @@ sub _remove_extra_groups {
   }
   return $result;
 }
-
-# Does the same as the `force_escape_tokens` flag for Regex::Assemble:
-# we need all double quotes to be escaped because we use them
-# as delimiters in rules.
-sub _escape_double_quotes {
-   my $str = shift;
-   $str =~ s/(?<!\\)"/\\"/g;
-   return $str;
- }

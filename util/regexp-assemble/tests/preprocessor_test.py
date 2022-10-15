@@ -10,111 +10,6 @@ from lib.processors.template import Template
 
 
 class TestAssemblePreprocessor:
-    def test_handles_ignore_case_flag(self, context):
-        for contents in ['##!+i', '##!+ i', '##!+   i' ]:
-            assemble = Assemble.create(context, [])
-
-            assemble.process_line(contents)
-            output = assemble.complete()
-
-            assert len(output) == 1
-            assert output[0] == "(?i)"
-
-    def test_handles_no_other_flags(self, context):
-        contents = '##!+smx'
-        assemble = Assemble.create(context, [])
-
-        assemble.process_line(contents)
-
-        output = assemble.complete()
-
-        assert len(output) == 0
-
-    def test_handles_prefix_comment(self, context):
-        contents = '''##!^ a prefix
-a
-b'''
-        assemble = Assemble.create(context, [])
-
-        for line in contents.splitlines():
-            assemble.process_line(line)
-
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == 'a prefix(?:[ab])'
-
-    def test_handles_suffix_comment(self, context):
-        contents = '''##!$ a suffix
-a
-b'''
-        assemble = Assemble.create(context, [])
-
-        for line in contents.splitlines():
-            assemble.process_line(line)
-
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == '(?:[ab])a suffix'
-
-    def test_ignores_empty_lines(self, context):
-        contents = '''##!+ i
-some line
-
-another line'''
-        assemble = Assemble.create(context, [])
-
-        for line in contents.splitlines():
-            assemble.process_line(line)
-
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == '(?i)(?:(?:another|some) line)'
-
-    def test_returns_no_output_for_empty_input(self, context):
-        contents = '''##!+ _
-
-'''
-        assemble = Assemble.create(context, [])
-
-        for line in contents.splitlines():
-            assemble.process_line(line)
-
-        output = assemble.complete()
-
-        assert len(output) == 0
-
-    def test_handles_backslash_escape_correctly(self, context):
-        contents = r'\x5c\x5ca'
-        assemble = Assemble.create(context, [])
-
-        assemble.process_line(contents)
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == r'(?:\x5c\x5ca)'
-
-    def test_always_escapes_double_quotes(self, context):
-        contents = r'(?:"\"\\"a)'
-        assemble = Assemble.create(context, [])
-
-        assemble.process_line(contents)
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == r'(?:\"\"\\\"a)'
-
-    def test_does_not_convert_hex_escapes(self, context):
-        contents = r'(?:\x48)'
-        assemble = Assemble.create(context, [])
-
-        assemble.process_line(contents)
-        output = assemble.complete()
-
-        assert len(output) == 1
-        assert output[0] == r'(?:\x48)'
 
     def test_assembling_1(self, context):
         contents = r'''##!^ \W*\(
@@ -125,7 +20,7 @@ d
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == '\W*\(two(?:a+b|c|d)'
+        assert output == '[^0-9A-Z_a-z]*\(two(?:a+b|[c-d])'
 
     def test_assembling_2(self, context):
         contents = r'''##!$ \W*\(
@@ -136,7 +31,7 @@ d
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == '(?:a+b|c|d)\W*\(two'
+        assert output == '(?:a+b|[c-d])[^0-9A-Z_a-z]*\(two'
 
     def test_assembling_3(self, context):
         contents = '''##!> assemble
@@ -151,7 +46,7 @@ cd
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == '(?:(?:line1)(?:ab|cd))'
+        assert output == 'line1(?:ab|cd)'
 
     def test_assembling_4(self, context):
         contents = '''##!> assemble
@@ -164,7 +59,7 @@ ab
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
-        assert output == '(?:ab)'
+        assert output == 'ab'
 
     def test_concatenating(self, context):
         contents = '''##!> assemble
@@ -180,7 +75,7 @@ five
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:(?:one|two)(?:three|four)|five)'
+        assert output == '(?:one|two)(?:three|four)|five'
 
     def test_concatenating_multiple_segments(self, context):
         contents = '''##!> assemble
@@ -207,7 +102,7 @@ ten
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:one|two)(?:three|four)fives(?:even|ix)(?:eight|nine)ten'
+        assert output == '(?:one|two)(?:three|four)fives(?:ix|even)(?:eight|nine)ten'
         
     def test_concatenating_multiple_segments_(self, context):
         contents = '''##!> assemble
@@ -233,7 +128,7 @@ ten
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:(?:one|two)(?:three|four)(?:five)(?:s(?:even|ix)(?:eight|nine)|ten))'
+        assert output == '(?:one|two)(?:three|four)five(?:s(?:ix|even)(?:eight|nine)|ten)'
 
     def test_concatenating_with_stored_input(self, context):
         contents = r'''##!> assemble
@@ -256,7 +151,7 @@ ten
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'(?:(?:%(?:(?:2f|5c)|\x5c))(?:\.(?:%0[01])?)(?:%(?:(?:2f|5c)|\x5c)))'
+        assert output == r'(?:\x5c|%(?:2f|5c))\.(?:%0[0-1])?(?:\x5c|%(?:2f|5c))'
 
     def test_stored_input_is_global(self, context):
         contents = '''##!> assemble
@@ -272,7 +167,7 @@ cd
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:ab|cd)'
+        assert output == 'ab|cd'
 
     def test_stored_input_isnt_available_to_inner_scope(self, context):
         contents = '''##!> assemble
@@ -302,7 +197,7 @@ cd
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:ab|cd)'
+        assert output == 'ab|cd'
 
     def test_concatenating_fails_when_input_unknown(self, context):
         contents = '''##!> assemble
@@ -330,7 +225,57 @@ d
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:[ab])(?:[cd])'
+        assert output == '[a-b][c-d]'
+
+    def test_concatenation_with_prefix_and_suffix(self, context):
+        contents = '''##!^ prefix
+##!$ suffix
+  ##!> assemble
+a
+b
+  ##!=< input
+  ##!<
+##!=> input
+'''
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == 'prefix[a-b]suffix'
+
+    def test_assemble_wrapped_in_group_with_tail_concatenation(sel, context):
+        contents = '''##!> assemble
+a
+b
+  ##!=>
+c
+d
+  ##!<
+##!=>
+more
+##!=>
+'''
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '[a-b][c-d]more'
+
+    def test_assemble_wrapped_in_group_with_tail_alternation(sel, context):
+        contents = '''##!> assemble
+a
+b
+  ##!=>
+c
+d
+  ##!<
+more
+'''
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == '[a-b][c-d]|more'
 
     def test_nested_groups(self, context):
         """
@@ -344,7 +289,7 @@ prefix(?:(?:y))+
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:(?:x)+|prefix(?:y)+)'
+        assert output == 'x+|prefixy+'
 
     def test_remove_extra_groups(self, context):
         contents = '(?:(?:a(?:b|c)(?:(?:d))))'
@@ -352,7 +297,7 @@ prefix(?:(?:y))+
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:(?:(?:a(?:[bc])(?:d))))'
+        assert output == 'a[b-c]d'
 
 class TestCmdLinePreprocessor:
     def test_adds_unix_escapes(self, context):
@@ -530,17 +475,17 @@ class TestTemplatePreprocessor:
             Template.create(context, ['id'])
 
     def test_replaces_template(self, context):
-        contents = r'''##!> template id **replaced**
+        contents = r'''##!> template id __replaced__
 {{id}}
 '''
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:**replaced**)'
+        assert output == '__replaced__'
 
     def test_replaces_multiple_templates(self, context):
-        contents = r'''##!> template id **replaced**
+        contents = r'''##!> template id __replaced__
 some
 {{id}}
 other
@@ -551,10 +496,10 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:**replaced**|other|some)'
+        assert output == 'some|__replaced__|other'
 
     def test_ignores_comments(self, context):
-        contents = r'''##!> template id **replaced**
+        contents = r'''##!> template id __replaced__
 ##! {{id}}
 '''
         assembler = Assembler(context)
@@ -564,7 +509,7 @@ other
         assert output == ''
 
     def test_replaces_multiple_per_line(self, context):
-        contents = r'''##!> template id **replaced**
+        contents = r'''##!> template id __replaced__
 {{id}}some{{id}}other{{id}}
 ##! lines
 '''
@@ -572,7 +517,7 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:**replaced**some**replaced**other**replaced**)'
+        assert output == '__replaced__some__replaced__other__replaced__'
 
     def test_retains_escapes(self, context):
         contents = r'''##!> template id \n\s\b\v\t
@@ -582,23 +527,21 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'(?:\n\s\b\v\t)'
+        assert output == r'\n[\t-\n\f-\r ]\b\v\t'
 
 
     def test_template_replaces_only_specified_template(self, context):
-        contents = r'''##!> template slashes [/\]
+        contents = r'''##!> template slashes [/\\]
 regex with {{slashes}} and {{dots}}
 '''
         assembler = Assembler(context)
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
-        # character classes. They should either be consistently escaped or not.
-        assert output == r'(?:regex with [\/\] and {{dots}})'
+        assert output == r'regex with [/\x5c] and \{\{dots\}\}'
 
     def test_template_replaces_all_normal_order(self, context):
-        contents = r'''##!> template slashes [/\]
+        contents = r'''##!> template slashes [/\\]
 ##!> template dots [.,;]
 regex with {{slashes}} and {{dots}}
 '''
@@ -606,9 +549,7 @@ regex with {{slashes}} and {{dots}}
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
-        # character classes. They should either be consistently escaped or not.
-        assert output == r'(?:regex with [/\] and [.,;])'
+        assert output == r'regex with [/\x5c] and [,\.;]'
 
     def test_template_replaces_all_inverse_order(self, context):
         contents = r'''##!> template slashes [/\]
@@ -625,7 +566,7 @@ regex with {{dots}} and {{slashes}}
 
 
     def test_template_replaces_on_all_lines(self, context):
-        contents = r'''##!> template slashes [/\]
+        contents = r'''##!> template slashes [/\\]
 ##!> template dots [.,;]
 ##!> template other {{slashes}}+
 {{slashes}}
@@ -641,9 +582,7 @@ regex with {{slashes}} and {{dots}}
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        # TODO: Regexp::Assemble is inconsistent with escaping forward slashes in
-        # character classes. They should either be consistently escaped or not.
-        assert output == r'(?:[\/\])(?:[.,;])(?:regex with [/\] and [.,;])(?:[\/\]+)'
+        assert output == r'[/\x5c][,\.;]regex with [/\x5c] and [,\.;][/\x5c]+'
 
 
 class TestIncludePreprocessor:
@@ -666,7 +605,90 @@ next line
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == '(?:file contents|next line)'
+        assert output == 'file contents|next line'
+
+    def test_includes_content_recursive(self, context):
+        name1 = f'{uuid.uuid4()}.data'
+        name2 = f'{uuid.uuid4()}.data'
+
+        file1_path = Path.joinpath(context.include_files_directory, name1)
+        file2_path = Path.joinpath(context.include_files_directory, name2)
+
+        contents = rf'''##!> include {file1_path.stem}
+first text 1'''
+        file1_path.write_text(rf'''##!> include {file2_path.stem}
+second text 5''')
+        file2_path.write_text(rf'''third text 10''')
+
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        # Unlink before fail
+        file1_path.unlink()
+        file2_path.unlink()
+
+        assert output == '(?:second text 5|third text 10|first text 1)'
+
+    def test_includes_content_with_templates_recursive(self, context):
+        name1 = f'{uuid.uuid4()}.data'
+        name2 = f'{uuid.uuid4()}.data'
+
+        file1_path = Path.joinpath(context.include_files_directory, name1)
+        file2_path = Path.joinpath(context.include_files_directory, name2)
+
+        contents = rf'''##!> include {file1_path.stem}
+first text 1'''
+        Path(file1_path).write_text(rf'''##!> include {file2_path.stem}
+second text 5
+##!> template slashes [/\]
+{{{{slashes}}}}
+''')
+        file2_path.write_text(r'''##!> template hex [a-fA-F0-9]
+{{hex}}
+third text
+''')
+
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        # Unlink before fail
+        file1_path.unlink()
+        file2_path.unlink()
+
+        assert output == '(?:second text 5|first text 1|[a-fA-F0-9]|third text|[\\/\\])'
+
+    def test_template_with_usage_included_from_other_file(self, context):
+        name1 = f'{uuid.uuid4()}.data'
+        name2 = f'{uuid.uuid4()}.data'
+
+        file1_path = Path.joinpath(context.include_files_directory, name1)
+        file2_path = Path.joinpath(context.include_files_directory, name2)
+
+        contents = rf'''##!> include {file1_path.stem}
+first text 1'''
+        Path(file1_path).write_text(rf'''##!> template hex [a-fA-F0-9]
+second text 5
+##!> template slashes [/\]
+
+##!> include {file2_path.stem}
+''')
+        file2_path.write_text(r'''##! all templates were defined in previous file
+{{hex}}
+third text
+{{slashes}}
+''')
+
+        assembler = Assembler(context)
+
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        # Unlink before fail
+        file1_path.unlink()
+        file2_path.unlink()
+
+        assert output == '(?:second text 5|first text 1|[a-fA-F0-9]|third text|[\\/\\])'
 
     def test_includes_content_recursive(self, context):
         name1 = f'{uuid.uuid4()}.data'

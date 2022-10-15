@@ -104,6 +104,6 @@
 
 ##! Append {2,3} to the result, as we're looking for two or three dots (e.g. /../, /.../)
 {2,3}
-##!=>
+##!==>
 
 ##!=> slashes
