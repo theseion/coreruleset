@@ -52,13 +52,15 @@ class Assemble(Processor):
         return [result] if len(result) > 0 else []
 
     def _wrap_completed_assembly(self, regex: str) -> str:
-        if len(regex) == 0 and len(self.output) == 0:
+        if not regex and not self.output:
             return ''
 
-        elif len(self.output) > 0 and len(regex) > 0:
+        elif self.output and regex:
             result = f'(?:{self.output}(?:{regex}))'
-        elif len(self.output) > 0:
+        elif self.output:
             result = '(?:' + self.output + ')'
+        elif not regex:
+            result = ''
         else:
             result = '(?:' + regex + ')'
 
@@ -66,7 +68,7 @@ class Assemble(Processor):
 
     def _run_assembler(self) -> str:
         self.logger.debug('Running assembler with lines: %s', self.lines)
-        if len(self.lines) == 0:
+        if not self.lines:
             return ''
 
         args = ['rassemble']
@@ -98,6 +100,7 @@ class Assemble(Processor):
             return self._recover_guarded_hex_escapes(result)
         except Exception:
             print(sys.exc_info())
+            sys.exit(1)
 
 
     def _store(self, identifier: str):
