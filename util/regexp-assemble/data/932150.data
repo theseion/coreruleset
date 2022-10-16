@@ -42,7 +42,7 @@ time
 ##!=>
 
 *
-##!==>
+##!=>
 
 ##! match possible white space between prefix expressions
 \s*
@@ -58,7 +58,7 @@ time
 ##!=>
 
 *
-##!==>
+##!=>
 
 ##! paths prefix (+ evasion prevention suffix [\x5c'\"]*)
 (?:[\?\*\[\]\(\)\-\|+\w'\"\./\x5c]+/)?[\x5c'\"]*

@@ -68,7 +68,7 @@
 ##!=>
 
 *
-##!==>
+##!=>
 
 ##! match possible white space between prefix expressions
 \s*
@@ -85,7 +85,7 @@
 ##!=>
 
 *
-##!==>
+##!=>
 
 ##! paths prefix (+ evasion prevention suffix [\x5c'\"]*)
 (?:[\?\*\[\]\(\)\-\|+\w'\"\./\x5c]+/)?[\x5c'\"]*

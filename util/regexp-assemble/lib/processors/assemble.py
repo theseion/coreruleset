@@ -3,8 +3,6 @@ from typing import TypeVar, List
 from subprocess import Popen, PIPE, TimeoutExpired
 import sys, re
 
-from pyparsing import matchOnlyAtCol
-
 from lib.processors.processor import Processor
 from lib.context import Context
 
@@ -14,7 +12,7 @@ T = TypeVar("T", bound="Assemble")
 class Assemble(Processor):
     input_regex = re.compile(r'^\s*##!=<\s*(.*)$')
     output_regex = re.compile(r'^\s*##!=>\s*(.*)$')
-    hex_escape_regex = re.compile(r'\[[^]]*(\\x[0-9a-f]{2})|[^\\](\\x[0-9a-f]{2})')
+    hex_escape_regex = re.compile(r'\[(?:[^]]|\\\])*\\x[0-9a-f]{2}|(?<!\\)(\\x[0-9a-f]{2})')
     hex_escape_recovery_regex = re.compile(r'_x_\\(\\x[0-9a-f]{2})_x_')
     stash = {}
 
@@ -111,9 +109,16 @@ class Assemble(Processor):
         # the value we just stored
         self.output = ''
 
-    def _append(self, identifier: str):
+    def _append(self, identifier: str|None):
         if not identifier:
-            self.output += '(?:' + self._run_assembler() + ')'
+            if len(self.lines) == 1:
+                # Treat as literal, could be start of a group or a range expresssion.
+                # Those can not be parsed by rassemble-go, since they are not valid
+                # expressions.
+                self.output += self.lines[0]
+                self.lines = []
+            else:
+                self.output += '(?:' + self._run_assembler() + ')'
         else:
             self.logger.debug('Appending stored expression at %s', identifier)
             self.output += self.stash[identifier]
@@ -135,10 +140,9 @@ class Assemble(Processor):
     def _guard_hex_escapes(self, input: str) -> str:
         def replace(matchobject):
             # Don't escape in character class
-            if '[' in matchobject.group(0):
+            if matchobject.group(0).startswith('['):
                 return matchobject.group(0)
             return rf'\Q_x_{matchobject.group(1)}_x_\E'
-
         return self.hex_escape_regex.sub(replace, input)
 
     # When we receive the output from rassemble-go, the quotemeta escapes

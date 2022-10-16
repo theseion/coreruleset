@@ -70,7 +70,7 @@ class FinalAssemble(Assemble):
             regex = self._escape_double_quotes(regex)
             regex = self._use_hex_backslashes(regex)
         if flags_prefix:
-            regex += flags_prefix
+            regex = flags_prefix + regex
         return [regex] if regex else []
 
     # Does the same as the `force_escape_tokens` flag for Regex::Assemble:
