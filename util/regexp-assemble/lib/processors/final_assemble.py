@@ -10,7 +10,7 @@ T = TypeVar("T", bound="FinalAssemble")
 
 class FinalAssemble(Assemble):
     # We currently only support the `i` flag
-    supported_flags = 'i'
+    supported_flags = 'is'
     flags_regex = re.compile(r'^\s*##!\+\s*(.*)$')
     prefix_regex = re.compile(r'^\s*##!\^\s*(.*)$')
     suffix_regex = re.compile(r'^\s*##!\$\s*(.*)$')
@@ -32,7 +32,7 @@ class FinalAssemble(Assemble):
             self.logger.debug("Matched flags", group)
             for flag in group:
                 if flag in self.supported_flags:
-                    self.flags.add(group)
+                    self.flags.add(flag)
             return
         
         match = self.prefix_regex.match(line)
@@ -69,6 +69,7 @@ class FinalAssemble(Assemble):
             regex = self._run_simplification_assembly(regex)
             regex = self._escape_double_quotes(regex)
             regex = self._use_hex_backslashes(regex)
+            regex = self._include_vertical_tab_in_backslash_s(regex)
         if flags_prefix:
             regex = flags_prefix + regex
         return [regex] if regex else []
@@ -97,3 +98,13 @@ class FinalAssemble(Assemble):
     def _run_simplification_assembly(self, input: str) -> str:
         self.lines.append(input)
         return self._run_assembler()
+
+    # In Perl, the vertical tab (`\v`, `\x0b`) is *not* part of `\s`, but it is
+    # in newer versions of PCRE (both 3 and 2). Go's `regexp/syntax` package
+    # uses Perl as the reference and, hence, generates `[\t-\n\f-\r ]` as the
+    # character class for `\s`, i.e., `\v` is missing.
+    # We simply replace the generated class with `\s` again to fix this.
+    def _include_vertical_tab_in_backslash_s(self, input: str) -> str:
+        result = input.replace(r'[\t-\n\f-\r ]', r'\s')
+        result = result.replace(r'[^\t-\n\f-\r ]', r'[^\s]')
+        return result.replace(r'\t-\n\f-\r ', r'\s')

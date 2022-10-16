@@ -34,7 +34,7 @@ a\W*?n\W*?i\W*?m\W*?a\W*?t\W*?e[^>\w]
 
 
 ##!> assemble
-(?:<\w[\s\S]*[\s/]|['\"](?:[\s\S]*[\s/])?)
+(?:<\w.*[\s/]|['\"](?:.*[\s/])?)
 ##!=< html-properties-prefix
 ##!<
 

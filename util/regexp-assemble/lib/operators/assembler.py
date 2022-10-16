@@ -1,4 +1,3 @@
-from types import TracebackType
 from typing import Iterable, TextIO, List, TypeVar, Generic, Generator, Iterator
 
 import re, logging, sys
@@ -261,7 +260,9 @@ class Assembler(object):
                     comment = comment[:min(len(line), 50)] + (' ...' if len(comment) >= 50 else '')
                     self.logger.debug('Found simple comment %r', comment)
             elif PREPROCESSOR_START_REGEX.match(line):
-                lines += self._preprocess(peekerator)
+                preprocessed_lines = self._preprocess(peekerator)
+                # FIXME: no longer necessary when running includes processor first
+                lines += [ l for l in preprocessed_lines if not self._is_simple_comment(l)]
                 self.logger.debug('Found preprocessor start marker "%s" on line %s', line.rstrip(), line_number)
             else:
                 lines.append(next(peekerator))
