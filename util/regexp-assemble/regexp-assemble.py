@@ -10,6 +10,7 @@
 # and the value is the script you want to execute (expected to be in the lib directory).
 
 import re, sys
+from subprocess import PIPE, Popen
 import argparse
 import logging
 from pathlib import Path
@@ -22,6 +23,7 @@ from lib.context import Context
 
 S = TypeVar("S", bound="argparse._SubParserAction[argparse.ArgumentParser]")
 
+rassemble_version = '0.1.0'
 
 def build_args_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -231,11 +233,30 @@ def setup_logger(namespace: argparse.Namespace):
     logger.setLevel(namespace.log_level)
     logger.addHandler(logging.StreamHandler())
 
+def check_prerequisites():
+    logger = logging.getLogger()
+    try:
+        args = ['rassemble', '-version']
+        proc = Popen(args, stdout=PIPE)
+        outs, _ = proc.communicate(timeout=30)
+    except OSError:
+        logger.error(f'''"rassemble-go" not found.
+You can install it by running "go install github.com/itchyny/rassemble-go/...@{rassemble_version}"''')
+        sys.exit(1)
+
+    if rassemble_version not in outs.decode('utf-8'):
+        logger.error(f'''Found "{outs.decode("utf-8").strip()}" but expected version "{rassemble_version}" of "rassemble-go".
+Please install the correct version of "rassemble-go" by running
+"go install github.com/itchyny/rassemble-go/...@{rassemble_version}"''')
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     parser = build_args_parser()
     namespace = parser.parse_args()
     setup_logger(namespace)
+
+    check_prerequisites()
 
     if 'func' in namespace:
         namespace.func(namespace)

@@ -157,6 +157,22 @@ another line'''
 
         assert output == r'\x5c\x5ca'
 
+    def test_does_not_destroy_hex_escapes(self, context):
+        contents = r'a\x5c\x48\\x48b'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'a\x5c\x48\x5cx48b'
+
+    def test_does_not_destroy_hex_escapes_in_alternations(self, context):
+        contents = r'''a\x5c\x48
+b\x5c\x48
+'''
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'[a-b]\x5c\x48'
+
     def test_handles_escaped_alternations_correctly(self, context):
         contents = r'\|\|something|or other'
         assembler = Assembler(context)
