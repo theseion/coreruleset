@@ -107,4 +107,6 @@ class FinalAssemble(Assemble):
     def _include_vertical_tab_in_backslash_s(self, input: str) -> str:
         result = input.replace(r'[\t-\n\f-\r ]', r'\s')
         result = result.replace(r'[^\t-\n\f-\r ]', r'[^\s]')
+        # There's a range attached, can't just replace
+        result = result.replace(r'\t-\n\f-\r -', r'\s -')
         return result.replace(r'\t-\n\f-\r ', r'\s')

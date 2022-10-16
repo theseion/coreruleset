@@ -42,6 +42,8 @@ class Assemble(Processor):
     # override
     def complete(self) -> List[str]:
         self.logger.debug('Completing assembly')
+        # if self.output.startswith(r'\s*;\s*'):
+        #     import pdb; pdb.set_trace()
         regex = self._run_assembler()
 
         result = self._wrap_completed_assembly(regex)
