@@ -106,8 +106,15 @@ class TestSpecialComments:
 
             assert output == "(?i)"
 
+    def test_handles_single_line_flag(self, context):
+        for contents in ['##!+s', '##!+ s', '##!+   s' ]:
+            assembler = Assembler(context)
+            output = assembler._run(Peekerator(contents.splitlines()))
+
+            assert output == "(?s)"
+
     def test_handles_no_other_flags(self, context):
-        contents = '##!+smx'
+        contents = '##!+mx'
         assembler = Assembler(context)
         output = assembler._run(Peekerator(contents.splitlines()))
 
@@ -162,7 +169,7 @@ another line'''
         assembler = Assembler(context)
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'a\x5c\x48\x5cx48b'
+        assert output == r'a\x5cH\x5cx48b'
 
     def test_does_not_destroy_hex_escapes_in_alternations(self, context):
         contents = r'''a\x5c\x48
@@ -171,7 +178,7 @@ b\x5c\x48
         assembler = Assembler(context)
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'[a-b]\x5c\x48'
+        assert output == r'[a-b]\x5cH'
 
     def test_handles_escaped_alternations_correctly(self, context):
         contents = r'\|\|something|or other'
@@ -187,12 +194,21 @@ b\x5c\x48
 
         assert output == r'\"\"\x5c"a'
 
-    def test_does_not_convert_hex_escapes(self, context):
-        contents = r'(?:\x48)'
+    def test_does_not_convert_hex_escapes_of_non_printable_characters(self, context):
+        contents = r'(?:\x48\xe2\x93\xab)'
         assembler = Assembler(context)
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'\x48'
+        assert output == r'H\xe2\x93\xab'
+
+    def test_backslash_s_replaces_perl_equivalent_character_class(self, context):
+        # rassemble-go returns `[\t-\n\f-\r ]` for `\s`, which is correct for Perl
+        # but does not include `\v`, which `\s` does in PCRE (3 and 2).
+        contents = r'\s'
+        assembler = Assembler(context)
+        output = assembler._run(Peekerator(contents.splitlines()))
+
+        assert output == r'\s'
 
 class TestPreprocessors:
     def test_sequential_preprocessors(self, context):

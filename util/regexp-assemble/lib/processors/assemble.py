@@ -1,7 +1,9 @@
+import string
 from typing import TypeVar, List
 
 from subprocess import Popen, PIPE, TimeoutExpired
 import sys, re
+from uuid import uuid4
 
 from lib.processors.processor import Processor
 from lib.context import Context
@@ -13,7 +15,6 @@ class Assemble(Processor):
     input_regex = re.compile(r'^\s*##!=<\s*(.*)$')
     output_regex = re.compile(r'^\s*##!=>\s*(.*)$')
     hex_escape_regex = re.compile(r'\[(?:[^]]|\\\])*\\x[0-9a-f]{2}|(?<!\\)(\\x[0-9a-f]{2})')
-    hex_escape_recovery_regex = re.compile(r'_x_\\(\\x[0-9a-f]{2})_x_')
     stash = {}
 
     def __init__(self, context: Context):
@@ -76,7 +77,10 @@ class Assemble(Processor):
         errs = None
         proc = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         for line in self.lines:
-            line = self._guard_hex_escapes(line)
+            # escaped_line = self._guard_hex_escapes(line)
+            # if escaped_line != line:
+                # self.logger.debug('Escaped line: %s', escaped_line)
+
             proc.stdin.write(line.encode("utf-8"))
             proc.stdin.write(b"\n")
         try:
@@ -97,7 +101,8 @@ class Assemble(Processor):
 
         try:
             result = outs.split(b"\n")[0].decode("utf-8")
-            return self._recover_guarded_hex_escapes(result)
+            result = self._use_hex_escapes(result)
+            return result
         except Exception:
             print(sys.exc_info())
             sys.exit(1)
@@ -130,32 +135,27 @@ class Assemble(Processor):
 
     # rassemble-go doesn't provide an option to specify literals.
     # Go itself would, via the `Literal` flag to `syntax.Parse`.
-    # As we don't have access to Go anyway, the only recourse is to
-    # use Perl quotemeta to mark the hex escape as a literal. If
-    # we didn't do this, the Go `regexp/syntax` package would convert
-    # the escapes to their actual value.
-    # Unfortunately, `regexp/syntax` parses Perl quotemeta but it doesn't
-    # provide a way to include it in the string form of the parsed expression.
-    # We try to work around this issue by adding a marker around the escape,
-    # so that we know where the quotemeta escapes used to be.
+    # As it is, escapes that are printable runes will be returned as such,
+    # which means we will have weird looking characters in our regex
+    # instead of hex escapes.
+    # To replace the characters with their hex escape sequence, we can simply
+    # take the decimal value of each byte (this might be a single byte of a
+    # multi-byte sequnce), check whether it is a printable character and
+    # then either append it to the output string or create the equivalent
+    # escape code.
     #
-    # Note: Must not escape inside character classes, where escapes are treated
-    # as literals anyway (Go will throw an exception, saying that quotemta escapes
-    # aren't allowed within character classes).
-    def _guard_hex_escapes(self, input: str) -> str:
-        def replace(matchobject):
-            # Don't escape in character class
-            if matchobject.group(0).startswith('['):
-                return matchobject.group(0)
-            return rf'\Q_x_{matchobject.group(1)}_x_\E'
-        return self.hex_escape_regex.sub(replace, input)
-
-    # When we receive the output from rassemble-go, the quotemeta escapes
-    # will have been removed and an additional backslash will have been added.
-    # Look for the markers and strip the backslash away. We need the markers
-    # so we don't accidentally alter an intended double backslash.
-    def _recover_guarded_hex_escapes(self, input: str) -> str:
-        def replace(matchobject):
-            return f'{matchobject.group(1)}'
-
-        return self.hex_escape_recovery_regex.sub(replace, input)
+    # Note: presumes that hexadecimal escapes in the input create UTF-8
+    # sequences.
+    #
+    # Note: not all hex escapes in the input will be escaped in the
+    # output, but all printable non-printable characters, including
+    # `\v\n\r` and space (`\x32`).
+    def _use_hex_escapes(self, input: str) -> str:
+        result = ''
+        for char in input:
+            dec_value = ord(char)
+            if dec_value < 32 or dec_value > 126:
+                result += f'\\x{format(dec_value, "x")}'
+            else:
+                result += char
+        return result

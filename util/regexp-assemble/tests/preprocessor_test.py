@@ -527,7 +527,7 @@ other
 
         output = assembler._run(Peekerator(contents.splitlines()))
 
-        assert output == r'\n[\t-\n\f-\r ]\b\v\t'
+        assert output == r'\n\s\b\v\t'
 
 
     def test_template_replaces_only_specified_template(self, context):
