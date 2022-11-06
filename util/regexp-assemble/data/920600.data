@@ -16,17 +16,17 @@
 ##!$ $
 
 ##! Helpers
-##!> template non-token-with-dquote-chars (),/:;<=>?![\x5c\]{}
+##!> define non-token-with-dquote-chars (),/:;<=>?![\x5c\]{}
 
-##!> template non-token-chars \"{{non-token-with-dquote-chars}}
+##!> define non-token-chars \"{{non-token-with-dquote-chars}}
 
-##!> template token-chars [^{{non-token-chars}}]
+##!> define token-chars [^{{non-token-chars}}]
 
-##!> template token-with-dquote-chars [^{{non-token-with-dquote-chars}}]
+##!> define token-with-dquote-chars [^{{non-token-with-dquote-chars}}]
 
-##!> template type-subtype (?:\*|{{token-chars}}+)
+##!> define type-subtype (?:\*|{{token-chars}}+)
 
-##!> template media-type {{type-subtype}}/{{type-subtype}}
+##!> define media-type {{type-subtype}}/{{type-subtype}}
 
 ##! list of allowed charsets
   ##!> assemble

@@ -123,7 +123,7 @@ class Assembler(object):
         self.preprocessor_map: dict[str, Processor] = {
             "cmdline": CmdLine,
             "assemble": Assemble,
-            "template": Template,
+            "define": Template,
             "include": Include
         }
 

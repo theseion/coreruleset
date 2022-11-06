@@ -475,7 +475,7 @@ class TestTemplatePreprocessor:
             Template.create(context, ['id'])
 
     def test_replaces_template(self, context):
-        contents = r'''##!> template id __replaced__
+        contents = r'''##!> define id __replaced__
 {{id}}
 '''
         assembler = Assembler(context)
@@ -485,7 +485,7 @@ class TestTemplatePreprocessor:
         assert output == '__replaced__'
 
     def test_replaces_multiple_templates(self, context):
-        contents = r'''##!> template id __replaced__
+        contents = r'''##!> define id __replaced__
 some
 {{id}}
 other
@@ -499,7 +499,7 @@ other
         assert output == 'some|__replaced__|other'
 
     def test_ignores_comments(self, context):
-        contents = r'''##!> template id __replaced__
+        contents = r'''##!> define id __replaced__
 ##! {{id}}
 '''
         assembler = Assembler(context)
@@ -509,7 +509,7 @@ other
         assert output == ''
 
     def test_replaces_multiple_per_line(self, context):
-        contents = r'''##!> template id __replaced__
+        contents = r'''##!> define id __replaced__
 {{id}}some{{id}}other{{id}}
 ##! lines
 '''
@@ -520,7 +520,7 @@ other
         assert output == '__replaced__some__replaced__other__replaced__'
 
     def test_retains_escapes(self, context):
-        contents = r'''##!> template id \n\s\b\v\t
+        contents = r'''##!> define id \n\s\b\v\t
 {{id}}
 '''
         assembler = Assembler(context)
@@ -531,7 +531,7 @@ other
 
 
     def test_template_replaces_only_specified_template(self, context):
-        contents = r'''##!> template slashes [/\\]
+        contents = r'''##!> define slashes [/\\]
 regex with {{slashes}} and {{dots}}
 '''
         assembler = Assembler(context)
@@ -541,8 +541,8 @@ regex with {{slashes}} and {{dots}}
         assert output == r'regex with [/\x5c] and \{\{dots\}\}'
 
     def test_template_replaces_all_normal_order(self, context):
-        contents = r'''##!> template slashes [/\\]
-##!> template dots [.,;]
+        contents = r'''##!> define slashes [/\\]
+##!> define dots [.,;]
 regex with {{slashes}} and {{dots}}
 '''
         assembler = Assembler(context)
@@ -552,8 +552,8 @@ regex with {{slashes}} and {{dots}}
         assert output == r'regex with [/\x5c] and [,\.;]'
 
     def test_template_replaces_all_inverse_order(self, context):
-        contents = r'''##!> template slashes [/\]
-##!> template dots [.,;]
+        contents = r'''##!> define slashes [/\]
+##!> define dots [.,;]
 regex with {{dots}} and {{slashes}}
 '''
         assembler = Assembler(context)
@@ -566,9 +566,9 @@ regex with {{dots}} and {{slashes}}
 
 
     def test_template_replaces_on_all_lines(self, context):
-        contents = r'''##!> template slashes [/\\]
-##!> template dots [.,;]
-##!> template other {{slashes}}+
+        contents = r'''##!> define slashes [/\\]
+##!> define dots [.,;]
+##!> define other {{slashes}}+
 {{slashes}}
 ##!=>
 {{dots}}
@@ -641,10 +641,10 @@ second text 5''')
 first text 1'''
         Path(file1_path).write_text(rf'''##!> include {file2_path.stem}
 second text 5
-##!> template slashes [/\]
+##!> define slashes [/\]
 {{{{slashes}}}}
 ''')
-        file2_path.write_text(r'''##!> template hex [a-fA-F0-9]
+        file2_path.write_text(r'''##!> define hex [a-fA-F0-9]
 {{hex}}
 third text
 ''')
@@ -668,9 +668,9 @@ third text
 
         contents = rf'''##!> include {file1_path.stem}
 first text 1'''
-        Path(file1_path).write_text(rf'''##!> template hex [a-fA-F0-9]
+        Path(file1_path).write_text(rf'''##!> define hex [a-fA-F0-9]
 second text 5
-##!> template slashes [/\]
+##!> define slashes [/\]
 
 ##!> include {file2_path.stem}
 ''')
@@ -724,10 +724,10 @@ second text 5''')
 first text 1'''
         Path(file1_path).write_text(rf'''##!> include {file2_path.stem}
 second text 5
-##!> template slashes [/\]
+##!> define slashes [/\]
 {{{{slashes}}}}
 ''')
-        file2_path.write_text(r'''##!> template hex [a-fA-F0-9]
+        file2_path.write_text(r'''##!> define hex [a-fA-F0-9]
 {{hex}}
 third text
 ''')
@@ -751,9 +751,9 @@ third text
 
         contents = rf'''##!> include {file1_path.stem}
 first text 1'''
-        Path(file1_path).write_text(rf'''##!> template hex [a-fA-F0-9]
+        Path(file1_path).write_text(rf'''##!> define hex [a-fA-F0-9]
 second text 5
-##!> template slashes [/\]
+##!> define slashes [/\]
 
 ##!> include {file2_path.stem}
 ''')
