@@ -33,77 +33,77 @@
 ##!> define media-type {{type-subtype}}/{{type-subtype}}
 
 ##! list of allowed charsets
-  ##!> assemble
-"?
+##!> assemble
+  "?
   ##!=>
-    ##!> include allowed-charsets
+  ##!> include allowed-charsets
   ##!=>
-\b"?
+  \b"?
   ##!=< allowed-charsets
-  ##!<
+##!<
 
 ##! valid media-range
+##!> assemble
   ##!> assemble
-    ##!> assemble
-(?:{{media-type}})
+    (?:{{media-type}})
     ##!=>
 
-      ##! parameters, semi-colon separated
-      ##!> assemble
-\s*;\s*
+    ##! parameters, semi-colon separated
+    ##!> assemble
+      \s*;\s*
       ##!=>
 
-        ##! "charset" with valid character set
-        ##!> assemble
-charset\s*=\s*
+      ##! "charset" with valid character set
+      ##!> assemble
+        charset\s*=\s*
         ##!=>
         ##!=> allowed-charsets
-        ##!<
+      ##!<
 
-        ##! If the first part wasn't a "charset", then
-        ##! any name is allowed here that is not "charset".
-        ##! Note that this doesn't follow the RFC strictly.
+      ##! If the first part wasn't a "charset", then
+      ##! any name is allowed here that is not "charset".
+      ##! Note that this doesn't follow the RFC strictly.
+      ##!> assemble
         ##!> assemble
-          ##!> assemble
-[^c{{non-token-chars}}]{{token-chars}}*
-c[^h{{non-token-chars}}]{{token-chars}}*
-ch[^a{{non-token-chars}}]{{token-chars}}*
-cha[^r{{non-token-chars}}]{{token-chars}}*
-char[^s{{non-token-chars}}]{{token-chars}}*
-chars[^e{{non-token-chars}}]{{token-chars}}*
-charse[^t{{non-token-chars}}]{{token-chars}}*
-          ##!<
+          [^c{{non-token-chars}}]{{token-chars}}*
+          c[^h{{non-token-chars}}]{{token-chars}}*
+          ch[^a{{non-token-chars}}]{{token-chars}}*
+          cha[^r{{non-token-chars}}]{{token-chars}}*
+          char[^s{{non-token-chars}}]{{token-chars}}*
+          chars[^e{{non-token-chars}}]{{token-chars}}*
+          charse[^t{{non-token-chars}}]{{token-chars}}*
+        ##!<
         ##!=>
 
         ##! any parameter values, since this is not a charset
-\s*=\s*{{token-with-dquote-chars}}+
-        ##!<
+        \s*=\s*{{token-with-dquote-chars}}+
       ##!<
+    ##!<
     ##!=>
     ##! any number of parameters
-*
+    *
     ##!=>
-    ##!<
+  ##!<
 
   ##! Clients like to violate the RFC, be lenient with
   ##! terminating semi-colons.
-(?:\s*;)?
+  (?:\s*;)?
   ##!=>
   ##!=< media-range
-  ##!<
+##!<
 
 
 ##! main assembly
 
 ##!=> media-range
 
-  ##! Multiple "media-range" expressions can be
-  ##! specified, comma separated.
-  ##!> assemble
-\s*,\s*
+##! Multiple "media-range" expressions can be
+##! specified, comma separated.
+##!> assemble
+  \s*,\s*
   ##!=>
   ##!=> media-range
-  ##!<
+##!<
 ##!=>
 
 ##! any number of media-ranges
