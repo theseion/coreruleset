@@ -126,3 +126,47 @@ tests:
             version: HTTP/1.1
           output:
             no_log_contains: id "932231"
+  - test_title: 932231-7
+    stages:
+      - stage:
+          input:
+            dest_addr: 127.0.0.1
+            headers:
+              Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+              Host: localhost
+              User-Agent: a=nc&&\$a -nlvp 555
+            method: GET
+            port: 80
+            uri: /get
+          output:
+            no_log_contains: id "932231"
+  - test_title: 932231-8
+    stages:
+      - stage:
+          input:
+            dest_addr: 127.0.0.1
+            headers:
+              Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+              Host: localhost
+              Referer: a=nc&&\$a -nlvp 666
+              User-Agent: OWASP ModSecurity Core Rule Set
+            method: GET
+            port: 80
+            uri: /get
+          output:
+            no_log_contains: id "932231"
+  - test_title: 932231-9
+    stages:
+      - stage:
+          input:
+            data: '{n\$u\c\$u,-nlvp,777}=xxx'
+            dest_addr: 127.0.0.1
+            headers:
+              Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+              Host: localhost
+              User-Agent: OWASP ModSecurity Core Rule Set
+            method: POST
+            port: 80
+            uri: /post
+          output:
+            no_log_contains: id "932231"
