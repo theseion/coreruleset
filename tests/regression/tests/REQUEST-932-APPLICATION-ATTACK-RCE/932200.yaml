@@ -296,7 +296,7 @@ tests:
             uri: /get
             version: HTTP/1.0
           output:
-            no_log_contains: id "932205"
+            no_log_contains: id "932200"
   - test_title: 932200-19
     desc: False positive test against query string and space in path
     stages:
@@ -313,4 +313,4 @@ tests:
             uri: /get
             version: HTTP/1.0
           output:
-            no_log_contains: id "932205"
+            no_log_contains: id "932200"
